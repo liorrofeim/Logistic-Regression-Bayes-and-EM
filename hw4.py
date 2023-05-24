@@ -152,8 +152,10 @@ def cross_validation(X, y, folds, algo, random_state):
         y_train = np.concatenate(y_folds[:i] + y_folds[i + 1 :])
         X_test = X_folds[i]
         y_test = y_folds[i]
+
         # train the model
         algo.fit(X_train, y_train)
+
         # predict the test set
         y_pred = algo.predict(X_test)
         # calculate the accuracy
@@ -184,7 +186,8 @@ def norm_pdf(data, mu, sigma):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    p = np.exp(-0.5 * ((data - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
