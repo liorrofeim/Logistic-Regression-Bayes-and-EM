@@ -186,7 +186,9 @@ def norm_pdf(data, mu, sigma):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    p = np.exp(-0.5 * ((data - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
+    p = np.exp(-0.5 * ((data.flatten() - mu) / sigma) ** 2) / (
+        sigma * np.sqrt(2 * np.pi)
+    )
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -232,7 +234,23 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        num_data = data.shape[0]
+        dim = data.shape[1]
+
+        # Initialize responsibilities randomly
+        self.responsibilities = np.random.rand(num_data, self.k)
+        self.responsibilities /= self.responsibilities.sum(axis=1, keepdims=True)
+
+        # Initialize weights uniformly
+        self.weights = np.ones(self.k) / self.k
+
+        # Initialize mus randomly chosen from data points
+        random_indices = np.random.choice(num_data, self.k, replace=False)
+        self.mus = data[random_indices]
+
+        # Initialize sigmas to be identity matrices
+        self.sigmas = np.array([np.eye(dim) for _ in range(self.k)])
+
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -244,7 +262,15 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+
+        # Calculate the responsibilities
+        for i in range(self.k):
+            # Calculate the pdf
+            pdf = norm_pdf(data, self.mus[i], self.sigmas[i])
+            # Update responsibilities
+            self.responsibilities[:, i] = self.weights[i] * pdf
+        # Normalize responsibilities
+        self.responsibilities /= np.sum(self.responsibilities, axis=1, keepdims=True)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -256,7 +282,24 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        for i in range(self.k):
+            # Compute the effective number of data points assigned to this Gaussian
+            weight = self.responsibilities[:, i].sum()
+
+            # Update the weight for this Gaussian
+            self.weights[i] = weight / data.shape[0]
+
+            # Update the mean for this Gaussian
+            self.mus[i] = (self.responsibilities[:, i, np.newaxis] * data).sum(
+                axis=0
+            ) / weight
+
+            # Update the standard deviation for this Gaussian
+            diff = data - self.mus[i]
+            self.sigmas[i] = np.sqrt(
+                (self.responsibilities[:, i, np.newaxis] * diff**2).sum(axis=0)
+                / weight
+            )
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -273,7 +316,44 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        # Initialize parameters
+        self.init_params(data)
+
+        # For calculating change in cost (log likelihood)
+        prev_cost = float("-inf")
+
+        # For keeping track of the costs
+        self.costs = []
+
+        for iteration in range(self.n_iter):
+            # E step
+            self.expectation(data)
+
+            # M step
+            self.maximization(data)
+
+            # Calculate cost (log likelihood)
+            cost = np.sum(
+                self.responsibilities
+                * np.log(
+                    np.array(
+                        [
+                            self.weights[i]
+                            * norm_pdf(data, self.mus[i], self.sigmas[i])
+                            for i in range(self.k)
+                        ]
+                    ).T
+                )
+            )
+
+            # Store the cost
+            self.costs.append(cost)
+
+            # Check for convergence
+            if np.abs(cost - prev_cost) < self.eps:
+                break
+
+            prev_cost = cost
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
