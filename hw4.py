@@ -66,7 +66,7 @@ class LogisticRegressionGD(object):
             z = np.dot(X, self.theta)
             h = 1.0 / (1.0 + np.exp(-z))
             # calculate the gradient
-            gradient = np.dot(X.T, (h - y)) / y.size
+            gradient = np.dot(X.T, (h - y))
             self.theta -= self.eta * gradient
             # calculate the cost function for the new theta
             J = -np.sum(y * np.log(h) + (1 - y) * np.log(1 - h)) / X.shape[0]
@@ -185,9 +185,7 @@ def norm_pdf(data, mu, sigma):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    p = np.exp(-0.5 * ((data.flatten() - mu) / sigma) ** 2) / (
-        sigma * np.sqrt(2 * np.pi)
-    )
+    p = (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((data - mu) / sigma) ** 2)
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -233,22 +231,15 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        num_data = data.shape[0]
-        dim = data.shape[1]
+        # Initialize mixture weights to uniform
+        self.weights = np.full(self.k, 1.0 / self.k)
 
-        # Initialize responsibilities randomly
-        self.responsibilities = np.random.rand(num_data, self.k)
-        self.responsibilities /= self.responsibilities.sum(axis=1, keepdims=True)
-
-        # Initialize weights uniformly
-        self.weights = np.ones(self.k) / self.k
-
-        # Initialize mus randomly chosen from data points
-        random_indices = np.random.choice(num_data, self.k, replace=False)
+        # Initialize means randomly sampled from the data
+        random_indices = np.random.choice(len(data), self.k, replace=False)
         self.mus = data[random_indices]
 
-        # Initialize sigmas to be identity matrices
-        self.sigmas = np.array([np.eye(dim) for _ in range(self.k)])
+        # Initialize standard deviations to the standard deviation of the data
+        self.sigmas = np.full((self.k, data.shape[1]), np.std(data, axis=0))
 
         ###########################################################################
         #                             END OF YOUR CODE                            #
@@ -262,14 +253,16 @@ class EM(object):
         # TODO: Implement the function.                                           #
         ###########################################################################
 
-        # Calculate the responsibilities
+        self.responsibilities = np.zeros((data.shape[0], self.k))
+
         for i in range(self.k):
-            # Calculate the pdf
-            pdf = norm_pdf(data, self.mus[i], self.sigmas[i])
-            # Update responsibilities
-            self.responsibilities[:, i] = self.weights[i] * pdf
-        # Normalize responsibilities
-        self.responsibilities /= np.sum(self.responsibilities, axis=1, keepdims=True)
+            for j in range(data.shape[1]):
+                self.responsibilities[:, i] += self.weights[i] * norm_pdf(
+                    data[:, j], self.mus[i, j], self.sigmas[i, j]
+                )
+
+        # Normalize responsibilities so they sum to 1
+        self.responsibilities /= self.responsibilities.sum(axis=1, keepdims=True)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -282,23 +275,16 @@ class EM(object):
         # TODO: Implement the function.                                           #
         ###########################################################################
         for i in range(self.k):
-            # Compute the effective number of data points assigned to this Gaussian
-            weight = self.responsibilities[:, i].sum()
+            resp = self.responsibilities[:, i]
+            total_resp = resp.sum()
 
-            # Update the weight for this Gaussian
-            self.weights[i] = weight / data.shape[0]
+            for j in range(data.shape[1]):
+                self.mus[i, j] = (data[:, j] * resp).sum() / total_resp
+                self.sigmas[i, j] = np.sqrt(
+                    ((data[:, j] - self.mus[i, j]) ** 2 * resp).sum() / total_resp
+                )
 
-            # Update the mean for this Gaussian
-            self.mus[i] = (self.responsibilities[:, i, np.newaxis] * data).sum(
-                axis=0
-            ) / weight
-
-            # Update the standard deviation for this Gaussian
-            diff = data - self.mus[i]
-            self.sigmas[i] = np.sqrt(
-                (self.responsibilities[:, i, np.newaxis] * diff**2).sum(axis=0)
-                / weight
-            )
+            self.weights[i] = total_resp / len(data)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -315,44 +301,34 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        # Initialize parameters
         self.init_params(data)
 
-        # For calculating change in cost (log likelihood)
-        prev_cost = float("-inf")
-
-        # For keeping track of the costs
-        self.costs = []
-
-        for iteration in range(self.n_iter):
-            # E step
+        for _ in range(self.n_iter):
+            prev_cost = self.costs
             self.expectation(data)
-
-            # M step
             self.maximization(data)
 
-            # Calculate cost (log likelihood)
-            cost = np.sum(
-                self.responsibilities
-                * np.log(
-                    np.array(
-                        [
-                            self.weights[i]
-                            * norm_pdf(data, self.mus[i], self.sigmas[i])
-                            for i in range(self.k)
-                        ]
-                    ).T
+            # Calculate cost
+            self.costs = 0
+            for j in range(data.shape[1]):
+                self.costs += np.sum(
+                    np.log(
+                        np.sum(
+                            self.weights
+                            * norm_pdf(
+                                data[:, j, np.newaxis],
+                                self.mus[:, j],
+                                self.sigmas[:, j],
+                            ),
+                            axis=1,
+                        )
+                    )
                 )
-            )
-
-            # Store the cost
-            self.costs.append(cost)
 
             # Check for convergence
-            if np.abs(cost - prev_cost) < self.eps:
+            if prev_cost is not None and abs(self.costs - prev_cost) < self.eps:
                 break
 
-            prev_cost = cost
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -379,7 +355,14 @@ def gmm_pdf(data, weights, mus, sigmas):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    pdf = np.zeros(data.shape[0])
+
+    for i in range(weights.shape[0]):  # for each component
+        component_pdf = np.ones(data.shape[0])
+        for j in range(data.shape[1]):  # for each dimension
+            component_pdf *= norm_pdf(data[:, j], mus[i, j], sigmas[i, j])
+        pdf += weights[i] * component_pdf
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -402,6 +385,8 @@ class NaiveBayesGaussian(object):
         self.k = k
         self.random_state = random_state
         self.prior = None
+        self.classes = None
+        self.em_models = None
 
     def fit(self, X, y):
         """
@@ -418,7 +403,15 @@ class NaiveBayesGaussian(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        # Compute the prior probabilities and fit GMMs to each class
+        self.classes = np.unique(y)
+        self.em_models = {
+            c: EM(k=self.k, random_state=self.random_state) for c in self.classes
+        }
+        self.prior = {c: np.mean(y == c) for c in self.classes}
+
+        for c in self.classes:
+            self.em_models[c].fit(X[y == c])
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -434,11 +427,23 @@ class NaiveBayesGaussian(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        preds = []
+        for i in range(X.shape[0]):
+            probs = {
+                c: self.prior[c]
+                * gmm_pdf(X[i].reshape(1, -1), *self.em_models[c].get_dist_params())
+                for c in self.classes
+            }
+            preds.append(max(probs, key=probs.get))
+        preds = np.array(preds)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
         return preds
+
+
+def accuracy(y_true, y_pred):
+    return np.mean(y_true == y_pred)
 
 
 def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
@@ -474,7 +479,26 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    # Initialize the models
+    lor_model = LogisticRegressionGD(eta=best_eta, eps=best_eps)
+    bayes_model = NaiveBayesGaussian(k=k)
+
+    # Train the models
+    lor_model.fit(x_train, y_train)
+    bayes_model.fit(x_train, y_train)
+
+    # Compute predictions for train and test datasets
+    lor_train_preds = lor_model.predict(x_train)
+    lor_test_preds = lor_model.predict(x_test)
+    bayes_train_preds = bayes_model.predict(x_train)
+    bayes_test_preds = bayes_model.predict(x_test)
+
+    # Compute accuracies
+    lor_train_acc = accuracy(y_train, lor_train_preds)
+    lor_test_acc = accuracy(y_test, lor_test_preds)
+    bayes_train_acc = accuracy(y_train, bayes_train_preds)
+    bayes_test_acc = accuracy(y_test, bayes_test_preds)
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
