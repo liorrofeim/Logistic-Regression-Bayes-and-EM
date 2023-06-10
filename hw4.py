@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
 
 class LogisticRegressionGD(object):
@@ -56,6 +58,8 @@ class LogisticRegressionGD(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
+        # normalize the data
+        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
         # initialize theta
         self.theta = np.random.rand(X.shape[1] + 1)
         # add x0 = 1 to each example
@@ -92,6 +96,8 @@ class LogisticRegressionGD(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
+        # normalize the data
+        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
         # add x0 = 1 to each example
         X = np.c_[np.ones((X.shape[0], 1)), X]
         # calculate the probability of each example to be 1
@@ -499,6 +505,29 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
     bayes_train_acc = accuracy(y_train, bayes_train_preds)
     bayes_test_acc = accuracy(y_test, bayes_test_preds)
 
+    # Plot the decision boundaries for the Logistic Regression model
+    plot_decision_regions(
+        x_train,
+        y_train,
+        lor_model,
+        resolution=0.01,
+        title="Logistic Regression Decision Boundaries",
+    )
+
+    # Plot decision boundaries for Naive Bayes GMM
+    plot_decision_regions(
+        x_train,
+        y_train,
+        bayes_model,
+        resolution=0.05,
+        title="Naive Bayes GMM Decision Boundaries",
+    )
+    plt.plot(np.arange(len(lor_model.Js)), lor_model.Js)
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    plt.title("Loss as a function of iterations")
+    plt.show()
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -513,25 +542,200 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
 def generate_datasets():
     from scipy.stats import multivariate_normal
 
-    """
-    This function should have no input.
-    It should generate the two dataset as described in the jupyter notebook,
-    and return them according to the provided return dict.
-    """
-    dataset_a_features = None
-    dataset_a_labels = None
-    dataset_b_features = None
-    dataset_b_labels = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    np.random.seed(0)
+
+    # For dataset_a where Naive Bayes works better, we generate data from multivariate gaussians
+    # where the covariance matrix is a diagonal matrix. This leads to the features being independent.
+    mean_a1 = [3, 6, 3]
+    cov_a1 = np.diag([1, 1, 1])
+    mean_a2 = [3, 0, 2]
+    cov_a2 = np.diag([1, 1, 1])
+    mean_a3 = [-2, 3, 3]
+    cov_a3 = np.diag([1, 1, 1])
+    mean_a4 = [8, 3, 3]
+    cov_a4 = np.diag([1, 1, 1])
+
+    dataset_a1 = multivariate_normal.rvs(mean=mean_a1, cov=cov_a1, size=250)
+    dataset_a2 = multivariate_normal.rvs(mean=mean_a2, cov=cov_a2, size=250)
+    dataset_a3 = multivariate_normal.rvs(mean=mean_a3, cov=cov_a3, size=250)
+    dataset_a4 = multivariate_normal.rvs(mean=mean_a4, cov=cov_a4, size=250)
+
+    dataset_a_features = np.vstack((dataset_a1, dataset_a2, dataset_a3, dataset_a4))
+    dataset_a_labels = np.hstack((np.zeros(500), np.ones(500)))
+
+    # For dataset_b where Logistic Regression works better, we generate data from multivariate gaussians
+    # where the covariance matrix is not a diagonal matrix, introducing correlations between the features.
+    mean_b1 = [0, 0, 0]
+    cov_b1 = [[0.9, 2, 0.9], [0.9, 2, 0.9], [0.9, 0.9, 2]]
+
+    mean_b2 = [0, 0, 1]
+    cov_b2 = [[0.9, 2, 0.9], [0.9, 2, 0.9], [0.9, 0.9, 2]]
+
+    mean_b3 = [0, 0, 0]
+    cov_b3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+    mean_b4 = [5, 5, 5]
+    cov_b4 = [[1, 0.5, 0.5], [0.5, 1, 0.5], [0.5, 0.5, 1]]
+
+    dataset_b1 = multivariate_normal.rvs(mean=mean_b1, cov=cov_b1, size=500)
+    dataset_b2 = multivariate_normal.rvs(mean=mean_b2, cov=cov_b2, size=500)
+    # dataset_b3 = multivariate_normal.rvs(mean=mean_b3, cov=cov_b3, size=250)
+    # dataset_b4 = multivariate_normal.rvs(mean=mean_b4, cov=cov_b4, size=250)
+
+    dataset_b_features = np.vstack((dataset_b1, dataset_b2))
+    dataset_b_labels = np.hstack((np.zeros(500), np.ones(500)))
+
     return {
         "dataset_a_features": dataset_a_features,
         "dataset_a_labels": dataset_a_labels,
         "dataset_b_features": dataset_b_features,
         "dataset_b_labels": dataset_b_labels,
     }
+
+
+def generate_datasets2():
+    from scipy.stats import multivariate_normal
+
+    n_samples = 1000
+
+    # Dataset A: Naive Bayes performs better
+    mean0 = [0, 0, 0]
+    cov0 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    class0 = multivariate_normal(mean0, cov0).rvs(n_samples // 2)
+
+    mean1 = [2, 2, 2]
+    cov1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    class1 = multivariate_normal(mean1, cov1).rvs(n_samples // 2)
+
+    dataset_a_features = np.vstack((class0, class1))
+    dataset_a_labels = np.hstack((np.zeros(n_samples // 2), np.ones(n_samples // 2)))
+
+    # Plotting Dataset A
+    plt.figure(figsize=(18, 6))
+    for i, (x, y) in enumerate([(0, 1), (0, 2), (1, 2)], start=1):
+        plt.subplot(1, 3, i)
+        plt.scatter(
+            dataset_a_features[: n_samples // 2, x],
+            dataset_a_features[: n_samples // 2, y],
+            color="b",
+        )
+        plt.scatter(
+            dataset_a_features[n_samples // 2 :, x],
+            dataset_a_features[n_samples // 2 :, y],
+            color="r",
+        )
+        plt.xlabel(f"Feature {x+1}")
+        plt.ylabel(f"Feature {y+1}")
+    plt.suptitle("Dataset A")
+    plt.show()
+
+    # Dataset B: Logistic Regression performs better
+    mean0 = [0, 0, 0]
+    cov0 = np.array([[1, 0.9, 0.9], [0.9, 1, 0.9], [0.9, 0.9, 1]])
+    class0 = multivariate_normal(mean0, cov0).rvs(n_samples // 2)
+
+    mean1 = [1, 1, 1]
+    cov1 = np.array([[1, 0.2, 0.2], [0.2, 1, 0.2], [0.2, 0.2, 1]])
+    class1 = multivariate_normal(mean1, cov1).rvs(n_samples // 2)
+
+    dataset_b_features = np.vstack((class0, class1))
+    dataset_b_labels = np.hstack((np.zeros(n_samples // 2), np.ones(n_samples // 2)))
+
+    # Plotting Dataset B
+    plt.figure(figsize=(18, 6))
+    for i, (x, y) in enumerate([(0, 1), (0, 2), (1, 2)], start=1):
+        plt.subplot(1, 3, i)
+        plt.scatter(
+            dataset_b_features[: n_samples // 2, x],
+            dataset_b_features[: n_samples // 2, y],
+            color="b",
+        )
+        plt.scatter(
+            dataset_b_features[n_samples // 2 :, x],
+            dataset_b_features[n_samples // 2 :, y],
+            color="r",
+        )
+        plt.xlabel(f"Feature {x+1}")
+        plt.ylabel(f"Feature {y+1}")
+    plt.suptitle("Dataset B")
+    plt.show()
+
+    return {
+        "dataset_a_features": dataset_a_features,
+        "dataset_a_labels": dataset_a_labels,
+        "dataset_b_features": dataset_b_features,
+        "dataset_b_labels": dataset_b_labels,
+    }
+
+
+"""--------------------------------------------------------------"""
+
+# Function for ploting the decision boundaries of a model
+def plot_decision_regions(X, y, classifier, resolution=0.01, title=""):
+
+    # setup marker generator and color map
+    markers = (".", ".")
+    colors = ("blue", "red")
+    cmap = ListedColormap(colors[: len(np.unique(y))])
+    # plot the decision surface
+    x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx1, xx2 = np.meshgrid(
+        np.arange(x1_min, x1_max, resolution), np.arange(x2_min, x2_max, resolution)
+    )
+    Z = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+    Z = Z.reshape(xx1.shape)
+    plt.contourf(xx1, xx2, Z, alpha=0.3, cmap=cmap)
+    plt.xlim(xx1.min(), xx1.max())
+    plt.ylim(xx2.min(), xx2.max())
+
+    for idx, cl in enumerate(np.unique(y)):
+        plt.title(title)
+        plt.scatter(
+            x=X[y == cl, 0],
+            y=X[y == cl, 1],
+            alpha=0.8,
+            c=colors[idx],
+            marker=markers[idx],
+            label=cl,
+            edgecolor="black",
+        )
+    plt.show()
+
+
+def logistic_vs_naive_acc(
+    dataset_a_features, dataset_a_labels, best_eta, best_eps, k=2
+):
+    # the function get dataset and returns the accuracy of logistic regression and naive bayes
+    data_a = np.concatenate(
+        (dataset_a_features, dataset_a_labels.reshape(-1, 1)), axis=1
+    )
+    # Shuffle the data
+    np.random.seed(1)
+
+    np.random.shuffle(data_a)
+    shuffled_indices = np.random.permutation(len(dataset_a_features))
+    shuffled_features_a = dataset_a_features[shuffled_indices]
+    shuffled_labels_a = dataset_a_labels[shuffled_indices]
+
+    split_index = int(0.8 * shuffled_features_a.shape[0])
+
+    # Split the shuffled features
+    train_features_a = shuffled_features_a[:split_index]
+    test_features_a = shuffled_features_a[split_index:]
+
+    # Split the shuffled labels
+    train_labels_a = shuffled_labels_a[:split_index]
+    test_labels_a = shuffled_labels_a[split_index:]
+
+    lor_model = LogisticRegressionGD(eta=best_eta, eps=best_eps)
+    lor_model.fit(train_features_a, train_labels_a)
+
+    lor_test_preds = lor_model.predict(test_features_a)
+    lor_acc = accuracy(lor_test_preds, test_labels_a)
+
+    bayes_model = NaiveBayesGaussian(k=k)
+    bayes_model.fit(train_features_a, train_labels_a)
+    bayes_test_preds = bayes_model.predict(test_features_a)
+    naive_acc = accuracy(bayes_test_preds, test_labels_a)
+    return lor_acc, naive_acc
