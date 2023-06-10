@@ -62,7 +62,7 @@ class LogisticRegressionGD(object):
         X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
         # initialize theta
         self.theta = np.random.rand(X.shape[1] + 1)
-        # add x0 = 1 to each example
+        # add bias
         X = np.c_[np.ones((X.shape[0], 1)), X]
 
         for i in range(self.n_iter):
@@ -73,7 +73,7 @@ class LogisticRegressionGD(object):
             gradient = np.dot(X.T, (h - y))
             self.theta -= self.eta * gradient
             # calculate the cost function for the new theta
-            J = -np.sum(y * np.log(h) + (1 - y) * np.log(1 - h)) / X.shape[0]
+            J = -np.sum(y * np.log(h) + ((1 - y) * np.log(1 - h))) / X.shape[0]
 
             self.thetas.append(self.theta)
             # stop if we get to convergence
@@ -98,7 +98,7 @@ class LogisticRegressionGD(object):
         ###########################################################################
         # normalize the data
         X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
-        # add x0 = 1 to each example
+        # add bias
         X = np.c_[np.ones((X.shape[0], 1)), X]
         # calculate the probability of each example to be 1
         z = np.dot(X, self.theta)
@@ -237,6 +237,8 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
+
+        self.responsibilities = np.zeros((data.shape[0], self.k))
         # Initialize mixture weights to uniform
         self.weights = np.full(self.k, 1.0 / self.k)
 
@@ -259,7 +261,7 @@ class EM(object):
         # TODO: Implement the function.                                           #
         ###########################################################################
 
-        self.responsibilities = np.zeros((data.shape[0], self.k))
+        # self.responsibilities = np.zeros((data.shape[0], self.k))
 
         for i in range(self.k):
             for j in range(data.shape[1]):
@@ -269,6 +271,7 @@ class EM(object):
 
         # Normalize responsibilities so they sum to 1
         self.responsibilities /= self.responsibilities.sum(axis=1, keepdims=True)
+
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -280,6 +283,7 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
+
         for i in range(self.k):
             resp = self.responsibilities[:, i]
             total_resp = resp.sum()
@@ -291,6 +295,7 @@ class EM(object):
                 )
 
             self.weights[i] = total_resp / len(data)
+
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -307,6 +312,7 @@ class EM(object):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
+
         self.init_params(data)
 
         for _ in range(self.n_iter):
@@ -485,6 +491,7 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
+    
     # Initialize the models
     lor_model = LogisticRegressionGD(eta=best_eta, eps=best_eps)
     bayes_model = NaiveBayesGaussian(k=k)
@@ -527,6 +534,9 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
     plt.ylabel("Loss")
     plt.title("Loss as a function of iterations")
     plt.show()
+    
+
+ 
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -571,16 +581,8 @@ def generate_datasets():
     mean_b2 = [0, 0, 1]
     cov_b2 = [[0.9, 2, 0.9], [0.9, 2, 0.9], [0.9, 0.9, 2]]
 
-    mean_b3 = [0, 0, 0]
-    cov_b3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
-    mean_b4 = [5, 5, 5]
-    cov_b4 = [[1, 0.5, 0.5], [0.5, 1, 0.5], [0.5, 0.5, 1]]
-
     dataset_b1 = multivariate_normal.rvs(mean=mean_b1, cov=cov_b1, size=500)
     dataset_b2 = multivariate_normal.rvs(mean=mean_b2, cov=cov_b2, size=500)
-    # dataset_b3 = multivariate_normal.rvs(mean=mean_b3, cov=cov_b3, size=250)
-    # dataset_b4 = multivariate_normal.rvs(mean=mean_b4, cov=cov_b4, size=250)
 
     dataset_b_features = np.vstack((dataset_b1, dataset_b2))
     dataset_b_labels = np.hstack((np.zeros(500), np.ones(500)))
@@ -739,3 +741,54 @@ def logistic_vs_naive_acc(
     bayes_test_preds = bayes_model.predict(test_features_a)
     naive_acc = accuracy(bayes_test_preds, test_labels_a)
     return lor_acc, naive_acc
+
+
+def generate_datasets3():
+    from scipy.stats import multivariate_normal
+
+    """
+    This function should have no input.
+    It should generate the two dataset as described in the jupyter notebook,
+    and return them according to the provided return dict.
+    """
+    dataset_a_features = None
+    dataset_a_labels = None
+    dataset_b_features = None
+    dataset_b_labels = None
+
+    np.random.seed(1)
+
+    a1 = np.concatenate((np.random.normal(8, 0.5, 200), np.random.normal(-8, 0.5, 200)))
+    b1 = np.concatenate((np.random.normal(-8, 0.5, 200), np.random.normal(8, 0.5, 200)))
+
+    a2 = np.concatenate(
+        (np.random.normal(-2, 0.5, 200), np.random.normal(-6, 0.5, 200))
+    )
+    b2 = np.concatenate(
+        (np.random.normal(-6, 0.5, 200), np.random.normal(-2, 0.5, 200))
+    )
+
+    a3 = np.concatenate((np.random.normal(-6, 0.5, 200), np.random.normal(3, 0.5, 200)))
+    b3 = np.concatenate((np.random.normal(-6, 0.5, 200), np.random.normal(3, 0.5, 200)))
+
+    dataset_a_features = (a1, a2, a3, b1, b2, b3)
+    dataset_a_labels = (0, 0, 0, 1, 1, 1)
+
+    c1 = np.concatenate((np.random.normal(0, 5, 200), np.random.normal(1, 5, 200)))
+    d1 = np.concatenate((np.random.normal(-3, 5, 200), np.random.normal(-4, 5, 200)))
+
+    c2 = c1 * 2
+    d2 = d1 * 2
+
+    c3 = np.concatenate((np.random.normal(0, 1, 200), np.random.normal(1, 1, 200)))
+    d3 = np.concatenate((np.random.normal(-6, 1, 200), np.random.normal(-7, 1, 200)))
+
+    dataset_b_features = (c1, c2, c3, d1, d2, d3)
+    dataset_b_labels = (0, 0, 0, 1, 1, 1)
+
+    return {
+        "dataset_a_features": dataset_a_features,
+        "dataset_a_labels": dataset_a_labels,
+        "dataset_b_features": dataset_b_features,
+        "dataset_b_labels": dataset_b_labels,
+    }
