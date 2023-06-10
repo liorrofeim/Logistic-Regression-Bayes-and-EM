@@ -491,7 +491,7 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    
+
     # Initialize the models
     lor_model = LogisticRegressionGD(eta=best_eta, eps=best_eps)
     bayes_model = NaiveBayesGaussian(k=k)
@@ -534,9 +534,6 @@ def model_evaluation(x_train, y_train, x_test, y_test, k, best_eta, best_eps):
     plt.ylabel("Loss")
     plt.title("Loss as a function of iterations")
     plt.show()
-    
-
- 
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -586,81 +583,6 @@ def generate_datasets():
 
     dataset_b_features = np.vstack((dataset_b1, dataset_b2))
     dataset_b_labels = np.hstack((np.zeros(500), np.ones(500)))
-
-    return {
-        "dataset_a_features": dataset_a_features,
-        "dataset_a_labels": dataset_a_labels,
-        "dataset_b_features": dataset_b_features,
-        "dataset_b_labels": dataset_b_labels,
-    }
-
-
-def generate_datasets2():
-    from scipy.stats import multivariate_normal
-
-    n_samples = 1000
-
-    # Dataset A: Naive Bayes performs better
-    mean0 = [0, 0, 0]
-    cov0 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    class0 = multivariate_normal(mean0, cov0).rvs(n_samples // 2)
-
-    mean1 = [2, 2, 2]
-    cov1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    class1 = multivariate_normal(mean1, cov1).rvs(n_samples // 2)
-
-    dataset_a_features = np.vstack((class0, class1))
-    dataset_a_labels = np.hstack((np.zeros(n_samples // 2), np.ones(n_samples // 2)))
-
-    # Plotting Dataset A
-    plt.figure(figsize=(18, 6))
-    for i, (x, y) in enumerate([(0, 1), (0, 2), (1, 2)], start=1):
-        plt.subplot(1, 3, i)
-        plt.scatter(
-            dataset_a_features[: n_samples // 2, x],
-            dataset_a_features[: n_samples // 2, y],
-            color="b",
-        )
-        plt.scatter(
-            dataset_a_features[n_samples // 2 :, x],
-            dataset_a_features[n_samples // 2 :, y],
-            color="r",
-        )
-        plt.xlabel(f"Feature {x+1}")
-        plt.ylabel(f"Feature {y+1}")
-    plt.suptitle("Dataset A")
-    plt.show()
-
-    # Dataset B: Logistic Regression performs better
-    mean0 = [0, 0, 0]
-    cov0 = np.array([[1, 0.9, 0.9], [0.9, 1, 0.9], [0.9, 0.9, 1]])
-    class0 = multivariate_normal(mean0, cov0).rvs(n_samples // 2)
-
-    mean1 = [1, 1, 1]
-    cov1 = np.array([[1, 0.2, 0.2], [0.2, 1, 0.2], [0.2, 0.2, 1]])
-    class1 = multivariate_normal(mean1, cov1).rvs(n_samples // 2)
-
-    dataset_b_features = np.vstack((class0, class1))
-    dataset_b_labels = np.hstack((np.zeros(n_samples // 2), np.ones(n_samples // 2)))
-
-    # Plotting Dataset B
-    plt.figure(figsize=(18, 6))
-    for i, (x, y) in enumerate([(0, 1), (0, 2), (1, 2)], start=1):
-        plt.subplot(1, 3, i)
-        plt.scatter(
-            dataset_b_features[: n_samples // 2, x],
-            dataset_b_features[: n_samples // 2, y],
-            color="b",
-        )
-        plt.scatter(
-            dataset_b_features[n_samples // 2 :, x],
-            dataset_b_features[n_samples // 2 :, y],
-            color="r",
-        )
-        plt.xlabel(f"Feature {x+1}")
-        plt.ylabel(f"Feature {y+1}")
-    plt.suptitle("Dataset B")
-    plt.show()
 
     return {
         "dataset_a_features": dataset_a_features,
@@ -741,54 +663,3 @@ def logistic_vs_naive_acc(
     bayes_test_preds = bayes_model.predict(test_features_a)
     naive_acc = accuracy(bayes_test_preds, test_labels_a)
     return lor_acc, naive_acc
-
-
-def generate_datasets3():
-    from scipy.stats import multivariate_normal
-
-    """
-    This function should have no input.
-    It should generate the two dataset as described in the jupyter notebook,
-    and return them according to the provided return dict.
-    """
-    dataset_a_features = None
-    dataset_a_labels = None
-    dataset_b_features = None
-    dataset_b_labels = None
-
-    np.random.seed(1)
-
-    a1 = np.concatenate((np.random.normal(8, 0.5, 200), np.random.normal(-8, 0.5, 200)))
-    b1 = np.concatenate((np.random.normal(-8, 0.5, 200), np.random.normal(8, 0.5, 200)))
-
-    a2 = np.concatenate(
-        (np.random.normal(-2, 0.5, 200), np.random.normal(-6, 0.5, 200))
-    )
-    b2 = np.concatenate(
-        (np.random.normal(-6, 0.5, 200), np.random.normal(-2, 0.5, 200))
-    )
-
-    a3 = np.concatenate((np.random.normal(-6, 0.5, 200), np.random.normal(3, 0.5, 200)))
-    b3 = np.concatenate((np.random.normal(-6, 0.5, 200), np.random.normal(3, 0.5, 200)))
-
-    dataset_a_features = (a1, a2, a3, b1, b2, b3)
-    dataset_a_labels = (0, 0, 0, 1, 1, 1)
-
-    c1 = np.concatenate((np.random.normal(0, 5, 200), np.random.normal(1, 5, 200)))
-    d1 = np.concatenate((np.random.normal(-3, 5, 200), np.random.normal(-4, 5, 200)))
-
-    c2 = c1 * 2
-    d2 = d1 * 2
-
-    c3 = np.concatenate((np.random.normal(0, 1, 200), np.random.normal(1, 1, 200)))
-    d3 = np.concatenate((np.random.normal(-6, 1, 200), np.random.normal(-7, 1, 200)))
-
-    dataset_b_features = (c1, c2, c3, d1, d2, d3)
-    dataset_b_labels = (0, 0, 0, 1, 1, 1)
-
-    return {
-        "dataset_a_features": dataset_a_features,
-        "dataset_a_labels": dataset_a_labels,
-        "dataset_b_features": dataset_b_features,
-        "dataset_b_labels": dataset_b_labels,
-    }
